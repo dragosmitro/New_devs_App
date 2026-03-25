@@ -29,10 +29,13 @@ interface SignInCredentials {
   password: string;
 }
 
+type SessionResult = { data: { session: AuthSession | null } };
+
 class LocalAuthClient {
   private subscribers: ((event: string, session: AuthSession | null) => void)[] = [];
   private session: AuthSession | null = null;
   private storageKey = 'base360-auth-token';
+  private pendingValidation: Promise<SessionResult> | null = null;
 
   constructor() {
     this.loadSession();
@@ -144,30 +147,48 @@ class LocalAuthClient {
     }
   }
 
-  async getSession(): Promise<{ data: { session: AuthSession | null } }> {
-    // Check if current session is still valid
-    if (this.session?.access_token) {
-      try {
-        // Verify token is still valid by calling a protected endpoint
-        const response = await fetch(`${this.getApiUrl()}/api/v1/auth/me`, {
-          headers: {
-            'Authorization': `Bearer ${this.session.access_token}`,
-          },
-        });
-
-        if (response.ok) {
-          return { data: { session: this.session } };
-        } else {
-          // Session invalid, clear it
-          this.saveSession(null);
-        }
-      } catch (error) {
-        console.warn('[LocalAuth] Session validation failed:', error);
-        this.saveSession(null);
-      }
+  async getSession(): Promise<SessionResult> {
+    if (!this.session?.access_token) {
+      return { data: { session: null } };
     }
 
-    return { data: { session: null } };
+    // Deduplicate: all concurrent callers share the same in-flight request
+    if (this.pendingValidation) {
+      return this.pendingValidation;
+    }
+
+    this.pendingValidation = this.validateCurrentSession();
+    try {
+      return await this.pendingValidation;
+    } finally {
+      this.pendingValidation = null;
+    }
+  }
+
+  private async validateCurrentSession(): Promise<SessionResult> {
+    try {
+      const response = await fetch(`${this.getApiUrl()}/api/v1/auth/me`, {
+        headers: { 'Authorization': `Bearer ${this.session!.access_token}` },
+      });
+
+      if (response.ok) {
+        return { data: { session: this.session } };
+      }
+
+      // Only clear on 401 — the token is genuinely invalid
+      if (response.status === 401) {
+        this.saveSession(null);
+        return { data: { session: null } };
+      }
+
+      // Any other status (500, 503, etc.) is transient — keep the session
+      console.warn(`[LocalAuth] Validation returned ${response.status}, keeping session`);
+      return { data: { session: this.session } };
+    } catch (error) {
+      // Network error — keep the session, don't log the user out
+      console.warn('[LocalAuth] Validation network error, keeping session:', error);
+      return { data: { session: this.session } };
+    }
   }
 
   async getUser(token?: string): Promise<{ user: AuthUser | null }> {
