@@ -12,7 +12,9 @@ class DatabasePool:
         self.session_factory = None
         
     async def initialize(self):
-        """Initialize database connection pool"""
+        """Initialize database connection pool (no-op if already initialized)"""
+        if self.engine and self.session_factory:
+            return
         try:
             # Convert the standard database URL to async driver format
             database_url = settings.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
@@ -45,7 +47,7 @@ class DatabasePool:
         if self.engine:
             await self.engine.dispose()
     
-    async def get_session(self) -> AsyncSession:
+    def get_session(self) -> AsyncSession:
         """Get database session from pool"""
         if not self.session_factory:
             raise Exception("Database pool not initialized")
