@@ -1,29 +1,37 @@
 import json
+import logging
 import redis.asyncio as redis
 from typing import Dict, Any
 import os
 
-# Initialize Redis client (typically configured centrally).
+from app.services.reservations import calculate_total_revenue
+
+logger = logging.getLogger(__name__)
+
 redis_client = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+
 
 async def get_revenue_summary(property_id: str, tenant_id: str) -> Dict[str, Any]:
     """
     Fetches revenue summary, utilizing caching to improve performance.
+    Falls through to database if Redis is unavailable.
     """
     cache_key = f"revenue:{tenant_id}:{property_id}"
-    
-    # Try to get from cache
-    cached = await redis_client.get(cache_key)
-    if cached:
-        return json.loads(cached)
-    
-    # Revenue calculation is delegated to the reservation service.
-    from app.services.reservations import calculate_total_revenue
-    
-    # Calculate revenue
+
+    # Try cache first, but don't fail if Redis is down
+    try:
+        cached = await redis_client.get(cache_key)
+        if cached:
+            return json.loads(cached)
+    except Exception as e:
+        logger.warning(f"Redis read failed, falling through to DB: {e}")
+
     result = await calculate_total_revenue(property_id, tenant_id)
-    
-    # Cache the result for 5 minutes
-    await redis_client.setex(cache_key, 300, json.dumps(result))
-    
+
+    # Try to cache the result, but don't fail if Redis is down
+    try:
+        await redis_client.setex(cache_key, 300, json.dumps(result))
+    except Exception as e:
+        logger.warning(f"Redis write failed, result not cached: {e}")
+
     return result
