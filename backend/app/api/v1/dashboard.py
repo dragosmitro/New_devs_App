@@ -42,6 +42,19 @@ async def get_dashboard_summary(
     if not tenant_id:
         raise HTTPException(status_code=403, detail="No tenant assigned")
 
+    # Verify property belongs to this tenant before returning any data
+    db_pool = DatabasePool()
+    await db_pool.initialize()
+    if not db_pool.session_factory:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    async with db_pool.get_session() as session:
+        result = await session.execute(
+            text("SELECT 1 FROM properties WHERE id = :id AND tenant_id = :tenant_id"),
+            {"id": property_id, "tenant_id": tenant_id},
+        )
+        if not result.fetchone():
+            raise HTTPException(status_code=404, detail="Property not found")
+
     revenue_data = await get_revenue_summary(property_id, tenant_id)
 
     return {
