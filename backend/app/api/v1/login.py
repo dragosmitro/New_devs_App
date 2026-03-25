@@ -43,15 +43,15 @@ async def login(request: LoginRequest):
         if email == "sunset@propertyflow.com" and password == "client_a_2024":
             logger.info("[LOGIN] Challenge Mode: Tenant A (Sunset Properties)")
             
-            # Create mock JWT token
             user_data = {
                 "id": "user-sunset",
                 "email": "sunset@propertyflow.com",
+                "tenant_id": "tenant-a",
+                "is_admin": False,
                 "app_metadata": {"role": "user", "tenant_id": "tenant-a"},
                 "user_metadata": {"name": "Sunset Properties Manager"},
                 "aud": "authenticated",
-                "created_at": datetime.utcnow().isoformat(),
-                "exp": datetime.utcnow() + timedelta(hours=24)
+                "exp": datetime.utcnow() + timedelta(hours=24),
             }
             
             token = jwt.encode(user_data, settings.secret_key, algorithm="HS256")
@@ -73,15 +73,15 @@ async def login(request: LoginRequest):
         if email == "ocean@propertyflow.com" and password == "client_b_2024":
             logger.info("[LOGIN] Challenge Mode: Tenant B (Ocean Rentals)")
             
-            # Create mock JWT token
             user_data = {
                 "id": "user-ocean",
                 "email": "ocean@propertyflow.com",
+                "tenant_id": "tenant-b",
+                "is_admin": False,
                 "app_metadata": {"role": "user", "tenant_id": "tenant-b"},
                 "user_metadata": {"name": "Ocean Rentals Manager"},
                 "aud": "authenticated",
-                "created_at": datetime.utcnow().isoformat(),
-                "exp": datetime.utcnow() + timedelta(hours=24)
+                "exp": datetime.utcnow() + timedelta(hours=24),
             }
             
             token = jwt.encode(user_data, settings.secret_key, algorithm="HS256")
