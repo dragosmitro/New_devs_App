@@ -5,7 +5,7 @@ from sqlalchemy import text
 
 from app.services.cache import get_revenue_summary
 from app.core.auth import authenticate_request as get_current_user
-from app.core.database_pool import DatabasePool
+from app.core.database_pool import db_pool
 
 router = APIRouter()
 
@@ -19,7 +19,6 @@ async def get_dashboard_properties(
     if not tenant_id:
         raise HTTPException(status_code=403, detail="No tenant assigned")
 
-    db_pool = DatabasePool()
     await db_pool.initialize()
 
     if not db_pool.session_factory:
@@ -43,7 +42,6 @@ async def get_dashboard_summary(
         raise HTTPException(status_code=403, detail="No tenant assigned")
 
     # Verify property belongs to this tenant before returning any data
-    db_pool = DatabasePool()
     await db_pool.initialize()
     if not db_pool.session_factory:
         raise HTTPException(status_code=503, detail="Database unavailable")

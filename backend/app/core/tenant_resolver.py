@@ -13,7 +13,7 @@ from jose import JWTError, jwt
 from sqlalchemy import text
 
 from app.config import settings
-from app.core.database_pool import DatabasePool
+from app.core.database_pool import db_pool
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,6 @@ class TenantResolver:
 
         # 2. Database lookup
         try:
-            db_pool = DatabasePool()
             await db_pool.initialize()
             if db_pool.session_factory:
                 async with db_pool.get_session() as session:

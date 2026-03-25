@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Dict, Any, List
 
 from sqlalchemy import text
-from app.core.database_pool import DatabasePool
+from app.core.database_pool import db_pool
 
 
 async def calculate_monthly_revenue(property_id: str, tenant_id: str, month: int, year: int) -> Decimal:
@@ -17,7 +17,6 @@ async def calculate_monthly_revenue(property_id: str, tenant_id: str, month: int
     else:
         end_date = datetime(year + 1, 1, 1)
 
-    db_pool = DatabasePool()
     await db_pool.initialize()
 
     if not db_pool.session_factory:
@@ -47,7 +46,6 @@ async def calculate_total_revenue(property_id: str, tenant_id: str) -> Dict[str,
     Aggregates revenue from database.
     """
     try:
-        db_pool = DatabasePool()
         await db_pool.initialize()
 
         if db_pool.session_factory:
