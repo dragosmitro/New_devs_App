@@ -285,11 +285,18 @@ try:
         # Fallback mode: Supabase client is not available.
         logger.warning("Supabase URL/Key not set. Running in Challenge Mode (Mock Client).")
         
+        # Email-to-tenant mapping for mock users
+        _mock_email_tenants = {
+            "sunset@propertyflow.com": "tenant-a",
+            "ocean@propertyflow.com": "tenant-b",
+            "candidate@propertyflow.com": "tenant-a",
+        }
+
         class MockUser:
             def __init__(self, email="candidate@propertyflow.com", role="admin", name="Candidate User"):
                 self.id = hashlib.md5(email.encode()).hexdigest()
                 self.email = email
-                self.app_metadata = {"role": role, "tenant_id": "tenant-a"}
+                self.app_metadata = {"role": role, "tenant_id": _mock_email_tenants.get(email)}
                 self.user_metadata = {"name": name}
                 self.created_at = "2024-01-01T00:00:00Z"
                 self.last_sign_in_at = "2024-01-01T00:00:00Z"
